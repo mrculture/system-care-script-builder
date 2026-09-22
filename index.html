@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>System Care Script Builder | UtilityShelf</title>
+    <meta
+      name="description"
+      content="Build cautious Windows cleanup scripts from selected tasks, dry-run options, restore point choices, and safety prompts."
+    />
+    <meta property="og:title" content="System Care Script Builder | UtilityShelf" />
+    <meta
+      property="og:description"
+      content="A browser-first utility for generating reviewable system care scripts with conservative cleanup defaults."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://system-care-script-builder.utilityshelf.site/" />
+    <link rel="canonical" href="https://system-care-script-builder.utilityshelf.site/" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="nav-rail" aria-label="Utility navigation">
+        <div class="nav-logo" aria-hidden="true">US</div>
+        <a class="nav-icon is-active" href="#overview" aria-label="Overview"><span>H</span><b>Home</b></a>
+        <a class="nav-icon" href="#cleanup" aria-label="Cleanup tools"><span>C</span><b>Cleanup</b></a>
+        <a class="nav-icon" href="#script-output" aria-label="Script output"><span>S</span><b>Script</b></a>
+      </aside>
+
+      <section id="overview" class="hero">
+        <div class="hero__media" aria-hidden="true">
+          <img src="assets/diagnostics-hero.png" alt="" />
+        </div>
+        <div class="hero__copy">
+          <p class="eyebrow">Utility Shelf</p>
+          <h1>System Care Script Builder</h1>
+          <p>
+            Answer a few simple questions, then create a recommended cleaning script
+            matched to the computer and how it is used.
+          </p>
+          <div class="hero__actions">
+            <button class="button button--secondary" id="start-tour" type="button">Show guided tour</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="system-overview" aria-label="System overview before guided setup">
+        <section class="panel health-panel" aria-labelledby="health-title">
+          <div class="panel__head">
+            <div>
+              <p class="eyebrow">System health</p>
+              <h2 id="health-title">Cleanup readiness score</h2>
+            </div>
+            <span class="status-pill" id="readiness-state">Good</span>
+          </div>
+          <div class="health-grid">
+            <div class="ring health-ring" aria-label="Readiness score">
+              <span id="health-score">85%</span>
+              <small id="risk-score">Low risk</small>
+            </div>
+            <div class="metric-list">
+              <div class="metric-row">
+                <span>What it means</span>
+                <strong id="readiness-meaning">Safe preview</strong>
+              </div>
+              <div class="metric-row">
+                <span>Selected tasks</span>
+                <strong id="task-count">3</strong>
+              </div>
+              <div class="metric-row">
+                <span>Admin coverage</span>
+                <strong id="admin-state">Off</strong>
+              </div>
+              <div class="metric-row">
+                <span>Run mode</span>
+                <strong id="dry-run-state">Dry run</strong>
+              </div>
+            </div>
+          </div>
+          <p class="readiness-note" id="readiness-description">
+            85% ready means the selected cleanup is low risk, previews changes first, and avoids advanced Windows changes.
+          </p>
+        </section>
+
+        <section class="panel storage-panel" aria-labelledby="storage-title">
+          <div class="panel__head">
+            <div>
+              <p class="eyebrow">Storage</p>
+              <h2 id="storage-title">Cleanup potential</h2>
+            </div>
+            <span class="status-pill" id="storage-state">Static guide</span>
+          </div>
+          <p class="storage-note">Based on a typical 512 GB Windows system drive.</p>
+          <div class="storage-wheel-wrap" aria-label="Static cleanup potential comparison">
+            <div class="storage-wheel-card">
+              <div class="ring storage-ring storage-ring--safe" aria-label="Safe cleanup potential">
+                <span id="storage-safe-score">0.3%</span>
+                <small>Safe</small>
+              </div>
+              <strong id="storage-safe-size">1.63 GB</strong>
+            </div>
+            <div class="storage-wheel-card">
+              <div class="ring storage-ring storage-ring--max" aria-label="Max cleanup potential">
+                <span id="storage-max-score">5.7%</span>
+                <small>Max</small>
+              </div>
+              <strong id="storage-max-size">29.18 GB</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel upgrade-panel" aria-labelledby="upgrade-title">
+          <div class="panel__head">
+            <div>
+              <p class="eyebrow">Upgrade guidance</p>
+              <h2 id="upgrade-title">Possible bottlenecks</h2>
+            </div>
+          </div>
+          <ul class="insight-list" id="upgrade-recommendations">
+            <li>Run the browser-safe scan or add known details for better advice.</li>
+          </ul>
+        </section>
+      </section>
+
+      <section class="guide-panel" aria-labelledby="guide-title">
+        <div class="guide-copy">
+          <p class="eyebrow">Guided setup</p>
+          <h2 id="guide-title">Choose your comfort level</h2>
+
+          <div class="read-tabs" role="tablist" aria-label="Guide type">
+            <button class="read-tab is-active" id="novice-tab" data-guide-tab="novice" type="button" role="tab" aria-selected="true" aria-controls="novice-guide">
+              Novice / intermediate
+            </button>
+            <button class="read-tab" id="advanced-tab" data-guide-tab="advanced" type="button" role="tab" aria-selected="false" aria-controls="advanced-guide">
+              Experienced / advanced
+            </button>
+          </div>
+
+          <article class="read-card is-active" id="novice-guide" role="tabpanel" aria-labelledby="novice-tab">
+            <h3>No technical knowledge needed</h3>
+            <p>
+              Choose the answers that sound closest. The builder will select the cleanup
+              tasks, keep risky options switched off unless they are useful, and generate
+              a script you can review before running.
+            </p>
+          </article>
+
+          <article class="read-card" id="advanced-guide" role="tabpanel" aria-labelledby="advanced-tab" hidden>
+            <h3>Direct cleanup strategy</h3>
+            <p>
+              Use the questions to set intent, then inspect the selected tasks below.
+              Maximum storage mode can add component cleanup, hibernation removal, and
+              Reserved Storage reduction. Those admin-level actions are generated in
+              preview mode first and should be run only after reading the script.
+            </p>
+          </article>
+
+          <div class="scan-explain">
+            <h3>About the browser-safe scan</h3>
+            <p>
+              This only reads basic browser-provided hints such as operating system,
+              CPU thread count, memory hint, browser storage estimate, graphics hint,
+              and browser name. It cannot see personal files, installed programs,
+              passwords, documents, or full hardware details.
+            </p>
+            <p class="scan-status" id="scan-status">Scan not run yet.</p>
+          </div>
+
+          <div class="diagnostic-panel">
+            <h3>Optional local diagnostic report</h3>
+            <p>
+              To give more accurate recommendations, this helper can read hardware
+              and performance details. It will not read personal files, documents,
+              passwords, or browsing history.
+            </p>
+            <ul>
+              <li>Windows version and edition</li>
+              <li>CPU name, speed, and current processor use</li>
+              <li>RAM size, RAM slot information when Windows exposes it, and current memory use</li>
+              <li>Graphics name, disk type, disk size, free space, and installed browsers</li>
+            </ul>
+            <div class="diagnostic-actions">
+              <button class="button button--secondary" id="use-browser-only" type="button">Use browser-safe scan only</button>
+              <button class="button button--primary" id="download-diagnostic" type="button">Download local diagnostic helper</button>
+            </div>
+            <details class="report-import">
+              <summary>Paste or upload diagnostic report</summary>
+              <label class="field">
+                <span>Paste report JSON</span>
+                <textarea id="diagnostic-json" rows="6" placeholder='Paste the contents of system-care-diagnostic-report.json here'></textarea>
+              </label>
+              <div class="diagnostic-actions">
+                <input id="diagnostic-file" type="file" accept="application/json,.json" />
+                <button class="button button--secondary" id="apply-diagnostic" type="button">Use this report</button>
+              </div>
+              <p class="scan-status" id="diagnostic-status">No diagnostic report added.</p>
+            </details>
+          </div>
+        </div>
+
+        <div class="question-grid">
+          <fieldset class="question-card">
+            <legend>What do you want most?</legend>
+            <label><input type="radio" name="goal" value="balanced" checked /> A safe tidy-up</label>
+            <label><input type="radio" name="goal" value="speed" /> Make the computer feel less sluggish</label>
+            <label><input type="radio" name="goal" value="max-space" /> Free up as much storage as possible</label>
+          </fieldset>
+
+          <fieldset class="question-card">
+            <legend>How full is the main drive?</legend>
+            <label><input type="radio" name="storage-pressure" value="normal" checked /> It still has space</label>
+            <label><input type="radio" name="storage-pressure" value="tight" /> It is getting full</label>
+            <label><input type="radio" name="storage-pressure" value="critical" /> It is almost full</label>
+          </fieldset>
+
+          <fieldset class="question-card">
+            <legend>Do you use hibernate?</legend>
+            <label><input type="radio" name="hibernate-use" value="keep" checked /> Yes, or I am not sure</label>
+            <label><input type="radio" name="hibernate-use" value="disable" /> No, I only shut down or sleep</label>
+          </fieldset>
+
+          <fieldset class="question-card">
+            <legend>Browser cleanup</legend>
+            <label><input type="radio" name="browser-clean" value="keep" checked /> Keep websites feeling familiar</label>
+            <label><input type="radio" name="browser-clean" value="clear" /> Clear browser caches too</label>
+          </fieldset>
+
+          <fieldset class="question-card">
+            <legend>Windows updates</legend>
+            <label><input type="radio" name="update-health" value="normal" checked /> Updates seem fine</label>
+            <label><input type="radio" name="update-health" value="stuck" /> Updates are stuck or messy</label>
+          </fieldset>
+
+          <fieldset class="question-card">
+            <legend>Extra space savers</legend>
+            <label><input type="radio" name="admin-space" value="avoid" checked /> Avoid advanced Windows changes</label>
+            <label><input type="radio" name="admin-space" value="allow" /> Include admin-only space savers</label>
+          </fieldset>
+        </div>
+
+      </section>
+
+      <section class="dashboard" aria-label="System care dashboard">
+        <section id="cleanup" class="panel cleanup-panel" aria-labelledby="cleanup-title">
+          <div class="panel__head">
+            <div>
+              <p class="eyebrow">Cleanup</p>
+              <h2 id="cleanup-title">Recommended tasks</h2>
+            </div>
+            <strong id="cleanup-size-secondary">2.45 GB found</strong>
+          </div>
+
+          <div class="segmented" role="group" aria-label="Cleaning intensity">
+            <button class="segment is-active" data-level="safe" type="button">Safe</button>
+            <button class="segment" data-level="balanced" type="button">Balanced</button>
+            <button class="segment" data-level="deepClean" type="button">Deep clean</button>
+            <button class="segment" data-level="maxSpace" type="button">Max space</button>
+          </div>
+
+          <div class="cleanup-board" id="task-options">
+            <label class="task-row">
+              <input type="checkbox" value="userTemp" checked />
+              <span>User temp files</span>
+              <strong>1.20 GB</strong>
+            </label>
+            <label class="task-row">
+              <input type="checkbox" value="windowsTemp" checked />
+              <span>Windows temp files</span>
+              <strong>734 MB</strong>
+            </label>
+            <label class="task-row">
+              <input type="checkbox" value="recycleBin" checked />
+              <span>Recycle bin</span>
+              <strong>281 MB</strong>
+            </label>
+            <label class="task-row">
+              <input type="checkbox" value="dnsCache" />
+              <span>DNS cache</span>
+              <strong>Low</strong>
+            </label>
+            <label class="task-row">
+              <input type="checkbox" value="thumbnailCache" />
+              <span>Thumbnail cache</span>
+              <strong>Safe</strong>
+            </label>
+            <label class="task-row">
+              <input type="checkbox" value="deliveryOptimization" />
+              <span>Update delivery cache</span>
+              <strong>520 MB</strong>
+            </label>
+            <label class="task-row">
+              <input type="checkbox" value="browserCaches" />
+              <span>Browser caches</span>
+              <strong>640 MB</strong>
+            </label>
+            <label class="task-row">
+              <input type="checkbox" value="errorReports" />
+              <span>Windows error reports</span>
+              <strong>Balanced</strong>
+            </label>
+            <label class="task-row">
+              <input type="checkbox" value="defenderCache" />
+              <span>Defender cache and logs</span>
+              <strong>Balanced</strong>
+            </label>
+            <label class="task-row">
+              <input type="checkbox" value="shaderCache" />
+              <span>DirectX shader cache</span>
+              <strong>Deep</strong>
+            </label>
+            <label class="task-row">
+              <input type="checkbox" value="crashDumps" />
+              <span>Crash dumps</span>
+              <strong>Deep</strong>
+            </label>
+            <label class="task-row">
+              <input type="checkbox" value="componentCleanup" />
+              <span>Windows component cleanup</span>
+              <strong>Deep</strong>
+            </label>
+            <label class="task-row">
+              <input type="checkbox" value="eventLogs" />
+              <span>Old log files</span>
+              <strong>Deep</strong>
+            </label>
+            <label class="task-row task-row--advanced">
+              <input type="checkbox" value="restorePointPrune" />
+              <span>System restore cleanup</span>
+              <strong>Warn</strong>
+            </label>
+            <label class="task-row task-row--advanced">
+              <input type="checkbox" value="hibernationFile" />
+              <span>Disable hibernation file</span>
+              <strong>Large</strong>
+            </label>
+            <label class="task-row task-row--advanced">
+              <input type="checkbox" value="reservedStorage" />
+              <span>Reduce Reserved Storage</span>
+              <strong>Admin</strong>
+            </label>
+            <label class="task-row task-row--advanced">
+              <input type="checkbox" value="windowsOld" />
+              <span>Previous Windows installation</span>
+              <strong>Warn</strong>
+            </label>
+            <label class="task-row task-row--advanced">
+              <input type="checkbox" value="componentResetBase" />
+              <span>Component reset base</span>
+              <strong>Warn</strong>
+            </label>
+          </div>
+        </section>
+
+        <section class="panel controls-panel" aria-label="Script controls">
+          <div class="panel__head">
+            <div>
+              <p class="eyebrow">Builder</p>
+              <h2>Plain settings</h2>
+            </div>
+          </div>
+
+          <div class="control-grid">
+            <label class="field">
+              <span>Computer type</span>
+              <select id="device-type">
+                <option value="laptop">Laptop</option>
+                <option value="home-pc">Home PC</option>
+                <option value="gaming-pc">Gaming PC</option>
+                <option value="workstation">Workstation</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Main drive type</span>
+              <select id="drive-type">
+                <option value="ssd">SSD / NVMe</option>
+                <option value="hdd">Hard disk</option>
+                <option value="mixed">Mixed drives</option>
+                <option value="unknown">Not sure</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Script format</span>
+              <select id="script-format">
+                <option value="powershell">PowerShell (.ps1)</option>
+                <option value="batch">Batch launcher (.bat)</option>
+                <option value="shell">macOS / Linux shell (.sh)</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="toggle-row">
+            <label class="toggle">
+              <input id="dry-run" type="checkbox" checked />
+              <span>Preview first</span>
+            </label>
+            <label class="toggle">
+              <input id="restore-point" type="checkbox" checked />
+              <span>Create restore point</span>
+            </label>
+            <label class="toggle">
+              <input id="admin-tasks" type="checkbox" />
+              <span>Allow admin tasks</span>
+            </label>
+          </div>
+
+          <div class="builder-actions">
+            <button class="button button--secondary" id="scan-device" type="button">
+              Use browser-safe scan
+            </button>
+            <p id="recommendation-summary">
+              Current recommendation: safe cleanup, dry run first, no advanced Windows changes.
+            </p>
+          </div>
+
+          <button class="button button--primary full-width" id="generate-script" type="button">
+            Build script from selected options then review it
+          </button>
+        </section>
+
+        <section class="panel temperature-panel" aria-labelledby="operations-title">
+          <div class="panel__head">
+            <div>
+              <p class="eyebrow">Operations</p>
+              <h2 id="operations-title">What this will do</h2>
+            </div>
+          </div>
+          <ul class="insight-list" id="insights">
+            <li>Safe mode avoids personal folders and destructive optimization.</li>
+            <li>SSD systems skip defrag-style maintenance.</li>
+            <li>Admin tasks are opt-in and labeled in the generated script.</li>
+          </ul>
+        </section>
+      </section>
+
+      <section id="script-output" class="console-section" aria-label="Generated script">
+        <div class="console-head">
+          <div>
+            <p class="eyebrow">Generated output</p>
+            <h2>Script to review</h2>
+          </div>
+          <div class="output-actions">
+            <button class="button button--secondary" id="copy-script" type="button">Copy</button>
+            <button class="button button--primary" id="download-script" type="button">Download</button>
+          </div>
+        </div>
+        <div class="download-note">
+          <h3>Why your browser may warn you</h3>
+          <p>
+            Browsers often warn when downloading script files such as PowerShell,
+            batch, or shell scripts because those files can make changes to a computer.
+            That warning is normal and sensible, even when the script was generated
+            locally on this page.
+          </p>
+          <p>
+            If you feel unsure, you do not have to download it. Use Copy instead, read
+            the code, and create the file yourself. If you copy the script text, this
+            tool can guide you through saving it manually step by step.
+          </p>
+        </div>
+        <pre><code id="script-code">Answer the questions, then create a recommended script.</code></pre>
+      </section>
+    </main>
+
+    <div class="tour-overlay" id="tour-overlay" hidden>
+      <div class="tour-shade" aria-hidden="true"></div>
+      <section class="tour-card" role="dialog" aria-modal="true" aria-labelledby="tour-title">
+        <div class="tour-guide" aria-hidden="true">
+          <div class="tour-face">
+            <span class="tour-eye tour-eye--left"></span>
+            <span class="tour-eye tour-eye--right"></span>
+            <span class="tour-smile"></span>
+          </div>
+        </div>
+        <div class="tour-bubble">
+          <p class="eyebrow" id="tour-step-count">Step 1 of 6</p>
+          <h2 id="tour-title">Welcome</h2>
+          <p id="tour-copy">This short guide will show you the safest way to use the tool.</p>
+          <div class="tour-actions">
+            <button class="button button--secondary" id="tour-prev" type="button">Back</button>
+            <button class="button button--primary" id="tour-next" type="button">Next</button>
+            <button class="button button--secondary" id="tour-skip" type="button">Skip tour</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="copy-help-overlay" id="copy-help-overlay" hidden>
+      <div class="tour-shade" aria-hidden="true"></div>
+      <section class="tour-card copy-help-card" role="dialog" aria-modal="true" aria-labelledby="copy-help-title">
+        <div class="tour-guide" aria-hidden="true">
+          <div class="tour-face">
+            <span class="tour-eye tour-eye--left"></span>
+            <span class="tour-eye tour-eye--right"></span>
+            <span class="tour-smile"></span>
+          </div>
+        </div>
+        <div class="tour-bubble">
+          <p class="eyebrow">Copied to clipboard</p>
+          <h2 id="copy-help-title">Need help saving it?</h2>
+          <p id="copy-help-copy">
+            The script text is copied. You can save it yourself instead of downloading it.
+          </p>
+          <ol class="copy-help-steps" id="copy-help-steps"></ol>
+          <div class="tour-actions">
+            <button class="button button--primary" id="copy-help-ok" type="button">Got it</button>
+            <button class="button button--secondary" id="copy-help-close" type="button">Close</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <a class="back-to-top" href="#overview" aria-label="Back to top">Top</a>
+
+    <script src="script.js"></script>
+  </body>
+</html>

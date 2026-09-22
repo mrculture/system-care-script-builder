@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://system-care-script-builder.utilityshelf.site/sitemap.xml
