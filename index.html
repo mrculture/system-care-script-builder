@@ -34,6 +34,7 @@
         <div class="hero__copy">
           <p class="eyebrow">Utility Shelf</p>
           <h1>System Care Script Builder</h1>
+          <p role="note"><strong>Preview-only beta — safety review in progress.</strong> Live cleanup is disabled. Generated Windows previews may create a log, but do not perform cleanup. Review every script; isolated-machine validation is still required.</p>
           <p>
             Answer a few simple questions, then create a recommended cleaning script
             matched to the computer and how it is used.
@@ -247,7 +248,7 @@
               <p class="eyebrow">Cleanup</p>
               <h2 id="cleanup-title">Recommended tasks</h2>
             </div>
-            <strong id="cleanup-size-secondary">2.45 GB found</strong>
+            <strong id="cleanup-size-secondary">Illustrative estimate, not scanned</strong>
           </div>
 
           <div class="segmented" role="group" aria-label="Cleaning intensity">
@@ -392,8 +393,8 @@
 
           <div class="toggle-row">
             <label class="toggle">
-              <input id="dry-run" type="checkbox" checked />
-              <span>Preview first</span>
+              <input id="dry-run" type="checkbox" checked disabled />
+              <span>Preview only (live cleanup disabled)</span>
             </label>
             <label class="toggle">
               <input id="restore-point" type="checkbox" checked />

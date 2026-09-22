@@ -442,7 +442,7 @@ function renderStaticStoragePotential() {
 }
 
 function renderStorageOverview(cleanupMb) {
-  $("#cleanup-size-secondary").textContent = `${formatCleanupSize(cleanupMb)} found`;
+  $("#cleanup-size-secondary").textContent = `${formatCleanupSize(cleanupMb)} illustrative estimate — not scanned`;
 }
 
 function renderUpgradeRecommendations() {
@@ -471,16 +471,18 @@ function renderUpgradeRecommendations() {
 
 function buildPowerShellScript() {
   const tasks = selectedTasks();
-  const profileOs = state.profile.os;
+  const commentValue = value => String(value ?? "Unknown").replace(/[\r\n\u2028\u2029\x00-\x1f]/g, " ");
+  const profileOs = commentValue(state.profile.os);
   const admin = $("#admin-tasks").checked;
-  const dryRun = $("#dry-run").checked;
+  // Live cleanup remains gated until isolated-machine validation is complete.
+  const dryRun = true;
   const restorePoint = $("#restore-point").checked;
   const taskSummary = tasks.map((task) => taskLabels[task]).join(", ");
   const action = dryRun ? "-WhatIf" : "-ErrorAction SilentlyContinue";
   const lines = [
     "# System Care Script Builder",
     "# Review every command before running. Close browsers before clearing browser caches.",
-    `# Profile: ${profileOs}; ${$("#device-type").value}; ${$("#drive-type").value}; ${state.profile.cpu}; ${state.profile.memory}`,
+    `# Profile: ${profileOs}; ${commentValue($("#device-type").value)}; ${commentValue($("#drive-type").value)}; ${commentValue(state.profile.cpu)}; ${commentValue(state.profile.memory)}`,
     `# Selected tasks: ${taskSummary || "None"}`,
     "# Safety note: restore cleanup, hibernation, Reserved Storage, Windows.old, and ResetBase are advanced Windows options.",
     "",
@@ -498,7 +500,7 @@ function buildPowerShellScript() {
     "",
     "function Clear-FolderContents {",
     "  param([Parameter(Mandatory=$true)][string]$Path)",
-    "  if (Test-Path $Path) {",
+    "  if (Test-Path -LiteralPath $Path -PathType Container) {",
     `    Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force ${action}`,
     "  }",
     "}",
@@ -514,7 +516,9 @@ function buildPowerShellScript() {
     );
   }
 
-  if (restorePoint) {
+  if (restorePoint && dryRun) {
+    lines.push("Write-Host 'Preview only: would request a restore point before live cleanup.'");
+  } else if (restorePoint) {
     lines.push(
       "",
       "if (Test-IsAdmin) {",
@@ -557,10 +561,10 @@ function buildPowerShellScript() {
       "Write-Host 'Clearing common browser cache folders for current user...'",
       "$BrowserCachePaths = @(",
       "  \"$env:LOCALAPPDATA\\Microsoft\\Edge\\User Data\\Default\\Cache\",",
-      "  \"$env:LOCALAPPDATA\\Google\\Chrome\\User Data\\Default\\Cache\",",
-      "  \"$env:APPDATA\\Mozilla\\Firefox\\Profiles\"",
+      "  \"$env:LOCALAPPDATA\\Google\\Chrome\\User Data\\Default\\Cache\"",
       ")",
       "$BrowserCachePaths | ForEach-Object { Clear-FolderContents -Path $_ }",
+      "Get-ChildItem -LiteralPath \"$env:LOCALAPPDATA\\Mozilla\\Firefox\\Profiles\" -Directory -ErrorAction SilentlyContinue | ForEach-Object { Clear-FolderContents -Path (Join-Path $_.FullName 'cache2') }",
     ],
     errorReports: [
       "",
@@ -725,24 +729,19 @@ function toBase64Utf8(text) {
 }
 
 function buildShellScript() {
-  const dryRun = $("#dry-run").checked;
   const tasks = selectedTasks();
-  const rm = dryRun ? "echo Would remove" : "rm -rf";
   const lines = [
     "#!/usr/bin/env bash",
     "set -u",
     "",
     "# System Care Script Builder",
     "# Review every command before running. Close browsers before clearing browser caches.",
-    `echo "Dry run: ${dryRun ? "enabled" : "disabled"}"`,
+    "echo 'Preview only: no cleanup commands are executed.'",
   ];
-  if (tasks.includes("userTemp")) lines.push(`${rm} "$TMPDIR"/*`);
+  if (tasks.includes("userTemp")) lines.push("echo 'Review user temporary files manually. No temporary path is assumed.'");
   if (tasks.includes("browserCaches")) {
     lines.push(
-      `${rm} "$HOME/Library/Caches/Google/Chrome"/* 2>/dev/null || true`,
-      `${rm} "$HOME/Library/Caches/Firefox"/* 2>/dev/null || true`,
-      `${rm} "$HOME/.cache/google-chrome"/* 2>/dev/null || true`,
-      `${rm} "$HOME/.cache/mozilla"/* 2>/dev/null || true`
+      "echo 'Review browser cache using the browser settings. Browser profiles must not be removed.'"
     );
   }
   if (tasks.includes("dnsCache")) {
@@ -1038,8 +1037,11 @@ function closeCopyHelp() {
 }
 
 async function copyScript() {
-  if (!state.script) generateScript();
-  await navigator.clipboard.writeText(state.script);
+  generateScript();
+  try { await navigator.clipboard.writeText(state.script); } catch {
+    $("#copy-script").textContent = "Copy manually from output";
+    return;
+  }
   $("#copy-script").textContent = "Copied";
   openCopyHelp();
   setTimeout(() => {
@@ -1048,7 +1050,7 @@ async function copyScript() {
 }
 
 function downloadScript() {
-  if (!state.script) generateScript();
+  generateScript();
   const format = $("#script-format").value;
   const extension = format === "batch" ? "bat" : format === "shell" ? "sh" : "ps1";
   downloadTextFile(`system-care-script.${extension}`, state.script);
