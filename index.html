@@ -258,6 +258,12 @@
             <button class="segment" data-level="maxSpace" type="button">Max space</button>
           </div>
 
+          <div class="download-note" id="windows-targets">
+            <h3>Windows cleanup targets</h3>
+            <p id="selected-targets" aria-live="polite"></p>
+            <p id="bin-choice"></p>
+          </div>
+
           <div class="cleanup-board" id="task-options">
             <label class="task-row">
               <input type="checkbox" value="userTemp" checked />
@@ -270,8 +276,8 @@
               <strong>734 MB</strong>
             </label>
             <label class="task-row">
-              <input type="checkbox" value="recycleBin" checked />
-              <span>Recycle bin</span>
+              <input type="checkbox" value="recycleBin" />
+              <span>Include emptying my Recycle Bin</span>
               <strong>281 MB</strong>
             </label>
             <label class="task-row">

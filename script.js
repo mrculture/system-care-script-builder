@@ -15,10 +15,9 @@ const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
 const taskPresets = {
-  safe: ["userTemp", "recycleBin", "thumbnailCache", "dnsCache"],
+  safe: ["userTemp", "thumbnailCache", "dnsCache"],
   balanced: [
     "userTemp",
-    "recycleBin",
     "thumbnailCache",
     "dnsCache",
     "windowsTemp",
@@ -29,7 +28,6 @@ const taskPresets = {
   ],
   deepClean: [
     "userTemp",
-    "recycleBin",
     "thumbnailCache",
     "dnsCache",
     "windowsTemp",
@@ -45,7 +43,6 @@ const taskPresets = {
   ],
   maxSpace: [
     "userTemp",
-    "recycleBin",
     "thumbnailCache",
     "dnsCache",
     "windowsTemp",
@@ -263,7 +260,8 @@ function selectedTasks() {
 
 function setSelectedTasks(tasks) {
   $$("#task-options input").forEach((input) => {
-    input.checked = tasks.includes(input.value);
+    // Presets and recommendations must preserve the user's explicit Recycle Bin choice.
+    if (input.value !== "recycleBin") input.checked = tasks.includes(input.value);
   });
 }
 
@@ -274,6 +272,7 @@ function setLevel(level) {
   setSelectedTasks(preset);
   $("#admin-tasks").checked = level === "maxSpace";
   renderInsights();
+  regenerateVisibleScript();
 }
 
 function answer(name) {
@@ -330,6 +329,7 @@ function applyRecommendations() {
   $("#dry-run").checked = true;
   updateRecommendationSummary(summary);
   renderInsights();
+  regenerateVisibleScript();
 }
 
 function updateRecommendationSummary(prefix = "Current recommendation") {
@@ -356,6 +356,19 @@ function renderInsights() {
   const risk = riskLevel();
   const tasks = selectedTasks();
   const admin = $("#admin-tasks").checked;
+  const locations = {
+    userTemp: "the current user’s temporary files (%TEMP%)",
+    thumbnailCache: "Explorer thumbnail databases (%LOCALAPPDATA%\\Microsoft\\Windows\\Explorer\\thumbcache_*.db)",
+    dnsCache: "the Windows DNS resolver cache",
+    recycleBin: "the current user’s Recycle Bin",
+  };
+  $("#windows-targets").hidden = $("#script-format").value === "shell";
+  $("#selected-targets").textContent = tasks.length
+    ? "Selected for preview: " + tasks.map(task => locations[task] || taskLabels[task]).join("; ") + "."
+    : "No cleanup targets selected.";
+  $("#bin-choice").textContent = tasks.includes("recycleBin")
+    ? "Recycle Bin included. A live cleanup would permanently empty it."
+    : "Recycle Bin excluded. Recycled files are kept.";
   const dryRun = $("#dry-run").checked;
   $("#risk-score").textContent = `${risk} risk`;
   const meter = $(".health-ring");
@@ -1103,10 +1116,17 @@ $("#tour-skip").addEventListener("click", closeTour);
 $("#copy-help-ok").addEventListener("click", closeCopyHelp);
 $("#copy-help-close").addEventListener("click", closeCopyHelp);
 $("#drive-type").addEventListener("change", renderInsights);
-$("#script-format").addEventListener("change", regenerateVisibleScript);
+$("#script-format").addEventListener("change", () => {
+  renderInsights();
+  regenerateVisibleScript();
+});
 $("#admin-tasks").addEventListener("change", renderInsights);
 $("#dry-run").addEventListener("change", renderInsights);
-$("#task-options").addEventListener("change", renderInsights);
+$("#task-options").addEventListener("change", () => {
+  updateRecommendationSummary();
+  renderInsights();
+  regenerateVisibleScript();
+});
 $$(".question-card input").forEach((input) => input.addEventListener("change", applyRecommendations));
 $$(".read-tab").forEach((tab) => tab.addEventListener("click", () => switchGuideTab(tab.dataset.guideTab)));
 $$(".segment").forEach((button) => button.addEventListener("click", () => setLevel(button.dataset.level)));
