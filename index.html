@@ -34,7 +34,7 @@
         <div class="hero__copy">
           <p class="eyebrow">Utility Shelf</p>
           <h1>System Care Script Builder</h1>
-          <p role="note"><strong>Preview-only beta — safety review in progress.</strong> Live cleanup is disabled. Generated Windows previews may create a log, but do not perform cleanup. Review every script; isolated-machine validation is still required.</p>
+          <p role="note"><strong>Windows Safe cleanup beta.</strong> Start with a preview. To download a script that performs cleanup, select Safe and PowerShell, review the targets, then select Live Safe cleanup. Emptying your Recycle Bin requires a separate choice.</p>
           <p>
             Answer a few simple questions, then create a recommended cleaning script
             matched to the computer and how it is used.
@@ -276,7 +276,7 @@
               <strong>734 MB</strong>
             </label>
             <label class="task-row">
-              <input type="checkbox" value="recycleBin" />
+              <input type="checkbox" value="recycleBin" autocomplete="off" />
               <span>Include emptying my Recycle Bin</span>
               <strong>281 MB</strong>
             </label>
@@ -399,8 +399,8 @@
 
           <div class="toggle-row">
             <label class="toggle">
-              <input id="dry-run" type="checkbox" checked disabled />
-              <span>Preview only (live cleanup disabled)</span>
+              <input id="live-safe" type="checkbox" disabled autocomplete="off" />
+              <span>Live Safe cleanup (.ps1, standard Windows user)</span>
             </label>
             <label class="toggle">
               <input id="restore-point" type="checkbox" checked />

@@ -258,6 +258,16 @@ function selectedTasks() {
   return $$("#task-options input:checked").map((input) => input.value);
 }
 
+function canRunLiveSafe(tasks = selectedTasks()) {
+  return state.level === "safe" && $("#script-format").value === "powershell" &&
+    !$("#admin-tasks").checked && taskPresets.safe.every(task => tasks.includes(task)) &&
+    tasks.every(task => task === "recycleBin" || taskPresets.safe.includes(task));
+}
+
+function liveSafeSelected() {
+  return $("#live-safe").checked && canRunLiveSafe();
+}
+
 function setSelectedTasks(tasks) {
   $$("#task-options input").forEach((input) => {
     // Presets and recommendations must preserve the user's explicit Recycle Bin choice.
@@ -266,11 +276,13 @@ function setSelectedTasks(tasks) {
 }
 
 function setLevel(level) {
+  $("#live-safe").checked = false;
   state.level = level;
   $$(".segment").forEach((button) => button.classList.toggle("is-active", button.dataset.level === level));
   const preset = taskPresets[level];
   setSelectedTasks(preset);
   $("#admin-tasks").checked = level === "maxSpace";
+  updateRecommendationSummary();
   renderInsights();
   regenerateVisibleScript();
 }
@@ -326,7 +338,7 @@ function applyRecommendations() {
   setSelectedTasks([...tasks]);
   $("#admin-tasks").checked = [...tasks].some((task) => advancedTasks.includes(task));
   $("#restore-point").checked = true;
-  $("#dry-run").checked = true;
+  $("#live-safe").checked = false;
   updateRecommendationSummary(summary);
   renderInsights();
   regenerateVisibleScript();
@@ -341,7 +353,7 @@ function updateRecommendationSummary(prefix = "Current recommendation") {
   if (tasks.includes("windowsOld")) warnings.push("previous Windows rollback files may be removed");
   if (tasks.includes("componentResetBase")) warnings.push("existing updates may become harder to uninstall");
   const warningText = warnings.length ? ` Includes: ${warnings.join("; ")}.` : "";
-  $("#recommendation-summary").textContent = `${prefix} ${tasks.length} tasks selected, preview mode on, ${admin ? "admin steps included" : "no advanced Windows changes"}.${warningText}`;
+  $("#recommendation-summary").textContent = `${prefix} ${tasks.length} tasks selected, ${liveSafeSelected() ? "live Safe cleanup" : "preview mode"}, ${admin ? "admin steps included" : "no advanced Windows changes"}.${warningText}`;
 }
 
 function riskLevel() {
@@ -362,14 +374,19 @@ function renderInsights() {
     dnsCache: "the Windows DNS resolver cache",
     recycleBin: "the current user’s Recycle Bin",
   };
+  const liveOption = $("#live-safe");
+  liveOption.disabled = !canRunLiveSafe(tasks);
+  if (liveOption.disabled) liveOption.checked = false;
+  const dryRun = !liveSafeSelected();
+  $("#restore-point").disabled = !dryRun;
   $("#windows-targets").hidden = $("#script-format").value === "shell";
   $("#selected-targets").textContent = tasks.length
-    ? "Selected for preview: " + tasks.map(task => locations[task] || taskLabels[task]).join("; ") + "."
+    ? (dryRun ? "Selected for preview: " : "Selected for live cleanup: ") + tasks.map(task => locations[task] || taskLabels[task]).join("; ") + "."
     : "No cleanup targets selected.";
   $("#bin-choice").textContent = tasks.includes("recycleBin")
     ? "Recycle Bin included. A live cleanup would permanently empty it."
     : "Recycle Bin excluded. Recycled files are kept.";
-  const dryRun = $("#dry-run").checked;
+
   $("#risk-score").textContent = `${risk} risk`;
   const meter = $(".health-ring");
   const color = risk === "High" ? "var(--red)" : risk === "Medium" ? "var(--amber)" : "var(--teal)";
@@ -403,13 +420,13 @@ function renderInsights() {
   $("#readiness-state").textContent = risk === "High" ? "Review" : risk === "Medium" ? "Caution" : "Good";
   $("#readiness-state").style.color = risk === "High" ? "var(--red)" : risk === "Medium" ? "var(--amber)" : "var(--green)";
   $("#readiness-meaning").textContent =
-    risk === "High" ? "Read warnings first" : risk === "Medium" ? "Useful but review" : "Safe preview";
+    risk === "High" ? "Read warnings first" : risk === "Medium" ? "Useful but review" : dryRun ? "Safe preview" : "Live Safe cleanup";
   $("#readiness-description").textContent =
     risk === "High"
       ? `${healthScore}% ready means powerful cleanup is selected. It can recover more space, but may remove rollback or recovery options, so preview and restore point matter.`
       : risk === "Medium"
         ? `${healthScore}% ready means the cleanup is useful and mostly routine, but includes deeper Windows cache or log work worth reviewing first.`
-        : `${healthScore}% ready means the selected cleanup is low risk, previews changes first, and avoids advanced Windows changes.`;
+        : dryRun ? "Preview the selected Safe targets before making changes." : "Running this PowerShell download performs the listed cleanup as your normal Windows user.";
   $("#task-count").textContent = tasks.length;
   $("#admin-state").textContent = admin ? "On" : "Off";
   $("#dry-run-state").textContent = dryRun ? "Dry run" : "Live";
@@ -487,9 +504,8 @@ function buildPowerShellScript() {
   const commentValue = value => String(value ?? "Unknown").replace(/[\r\n\u2028\u2029\x00-\x1f]/g, " ");
   const profileOs = commentValue(state.profile.os);
   const admin = $("#admin-tasks").checked;
-  // Live cleanup remains gated until isolated-machine validation is complete.
-  const dryRun = true;
-  const restorePoint = $("#restore-point").checked;
+  const dryRun = !liveSafeSelected();
+  const restorePoint = dryRun && $("#restore-point").checked;
   const taskSummary = tasks.map((task) => taskLabels[task]).join(", ");
   const action = dryRun ? "-WhatIf" : "-ErrorAction Continue";
   const lines = [
@@ -500,6 +516,26 @@ function buildPowerShellScript() {
     "# Safety note: restore cleanup, hibernation, Reserved Storage, Windows.old, and ResetBase are advanced Windows options.",
     "",
     "$ErrorActionPreference = 'Continue'",
+    ...(!dryRun ? [
+      "# LIVE SAFE CLEANUP - running this file performs the selected actions.",
+      "$identity = [Security.Principal.WindowsIdentity]::GetCurrent()",
+      "if ([Security.Principal.WindowsPrincipal]::new($identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run Live Safe cleanup as your normal user.' }",
+      "$local = [Environment]::GetFolderPath('LocalApplicationData')",
+      "$tempRoot = Join-Path $local 'Temp'",
+      "$tempPath = (Get-Item -LiteralPath $env:TEMP -ErrorAction Stop).FullName",
+      "if ($local -notmatch '^[A-Za-z]:\\\\' -or $env:LOCALAPPDATA -ne $local -or ($tempPath -ne $tempRoot -and !$tempPath.StartsWith(($tempRoot + '\\'), [StringComparison]::OrdinalIgnoreCase))) { throw 'Unexpected temp or profile location. Cleanup stopped.' }",
+      "function Assert-LocalPath([string]$Path) {",
+      "  while ($Path) {",
+      "    if (Test-Path -LiteralPath $Path) {",
+      "      if ((Get-Item -LiteralPath $Path -Force -ErrorAction Stop).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw \"Redirected cleanup path: $Path\" }",
+      "    }",
+      "    $Path = [IO.Path]::GetDirectoryName($Path)",
+      "  }",
+      "}",
+      "Assert-LocalPath $tempPath",
+      "Assert-LocalPath (Join-Path $local 'Microsoft\\Windows\\Explorer')",
+      "Assert-LocalPath (Join-Path $local 'UtilityShelf\\SystemCareScriptBuilder\\Logs')",
+    ] : []),
     "$LogRoot = Join-Path $env:LOCALAPPDATA 'UtilityShelf\\SystemCareScriptBuilder\\Logs'",
     "New-Item -ItemType Directory -Force -ErrorAction Stop -Path $LogRoot | Out-Null",
     "$LogFile = Join-Path $LogRoot ('care-run-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '.log')",
@@ -525,7 +561,15 @@ function buildPowerShellScript() {
     "function Clear-FolderContents {",
     "  param([Parameter(Mandatory=$true)][string]$Path)",
     "  if (Test-Path -LiteralPath $Path -PathType Container) {",
-    `    Get-ChildItem -LiteralPath $Path -Force -ErrorAction Continue | Remove-Item -Recurse -Force ${action}`,
+    ...(dryRun ? ["    Get-ChildItem -LiteralPath $Path -Force -ErrorAction Continue | Remove-Item -Recurse -Force -WhatIf"] : [
+      "    foreach ($item in (Get-ChildItem -LiteralPath $Path -Force -ErrorAction Continue)) {",
+      "      if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { Write-Warning \"Skipping redirected item: $($item.FullName)\"; continue }",
+      "      if ($item.PSIsContainer) {",
+      "        Clear-FolderContents -Path $item.FullName",
+      "        try { [IO.Directory]::Delete($item.FullName, $false) } catch { Write-Error $_ }",
+      "      } else { Remove-Item -LiteralPath $item.FullName -Force -ErrorAction Continue }",
+      "    }",
+    ]),
     "  }",
     "}",
     "",
@@ -1052,10 +1096,10 @@ function scriptSaveHelp() {
     };
   }
   return {
-    filename: "system-care-script.ps1",
+    filename: liveSafeSelected() ? "system-care-safe-live.ps1" : "system-care-script.ps1",
     app: "Notepad",
     warning: "This is PowerShell code. Save it as .ps1, not .bat. A .bat file cannot run these lines directly.",
-    run: "Do not rely on double-clicking the .ps1 file. Open Windows PowerShell as administrator, type Set-ExecutionPolicy -Scope Process Bypass, press Enter, then run the saved .ps1 file after reviewing it.",
+    run: "Do not rely on double-clicking the .ps1 file. Review the file, open Windows PowerShell as your normal user, and run the saved script.",
   };
 }
 
@@ -1095,7 +1139,7 @@ function downloadScript() {
   generateScript();
   const format = $("#script-format").value;
   const extension = format === "batch" ? "bat" : format === "shell" ? "sh" : "ps1";
-  downloadTextFile(`system-care-script.${extension}`, state.script);
+  downloadTextFile(liveSafeSelected() ? "system-care-safe-live.ps1" : `system-care-script.${extension}`, state.script);
 }
 
 function regenerateVisibleScript() {
@@ -1118,12 +1162,25 @@ $("#copy-help-ok").addEventListener("click", closeCopyHelp);
 $("#copy-help-close").addEventListener("click", closeCopyHelp);
 $("#drive-type").addEventListener("change", renderInsights);
 $("#script-format").addEventListener("change", () => {
+  $("#live-safe").checked = false;
+  updateRecommendationSummary();
   renderInsights();
   regenerateVisibleScript();
 });
-$("#admin-tasks").addEventListener("change", renderInsights);
-$("#dry-run").addEventListener("change", renderInsights);
+$("#admin-tasks").addEventListener("change", () => {
+  $("#live-safe").checked = false;
+  updateRecommendationSummary();
+  renderInsights();
+  regenerateVisibleScript();
+});
+$("#live-safe").addEventListener("change", () => {
+  if (liveSafeSelected()) $("#restore-point").checked = false;
+  updateRecommendationSummary();
+  renderInsights();
+  regenerateVisibleScript();
+});
 $("#task-options").addEventListener("change", () => {
+  $("#live-safe").checked = false;
   updateRecommendationSummary();
   renderInsights();
   regenerateVisibleScript();
