@@ -553,7 +553,9 @@ function buildPowerShellScript() {
       "",
       "Write-Host 'Clearing Delivery Optimization cache...'",
       admin
-        ? `if (Test-IsAdmin) { Delete-DeliveryOptimizationCache -Force ${dryRun ? "-WhatIf" : "-ErrorAction SilentlyContinue"} } else { Write-Warning 'Delivery Optimization cache cleanup needs Administrator.' }`
+        ? dryRun
+          ? "Write-Host 'Would run as Administrator: Delete-DeliveryOptimizationCache -Force'"
+          : "if (Test-IsAdmin) { Delete-DeliveryOptimizationCache -Force -ErrorAction SilentlyContinue } else { Write-Warning 'Delivery Optimization cache cleanup needs Administrator.' }"
         : "Write-Host 'Skipped Delivery Optimization cache because admin tasks are disabled.'",
     ],
     browserCaches: [
