@@ -569,8 +569,9 @@ function buildPowerShellScript() {
       "if ($recycledItems.Count -eq 0) {",
       "  Write-Host 'Recycle Bin is empty. Nothing to clear.'",
       "} else {",
-      "  Write-Host 'Clearing recycle bin...'",
-      `  Clear-RecycleBin -Force ${dryRun ? "-WhatIf" : "-ErrorAction Continue"}`,
+      ...(dryRun
+        ? ["  Write-Host 'Preview only: would empty the Recycle Bin.'"]
+        : ["  Write-Host 'Clearing recycle bin...'", "  Clear-RecycleBin -Force -ErrorAction Continue"]),
       "}",
     ],
     dnsCache: [
