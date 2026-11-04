@@ -478,7 +478,7 @@ function buildPowerShellScript() {
   const dryRun = true;
   const restorePoint = $("#restore-point").checked;
   const taskSummary = tasks.map((task) => taskLabels[task]).join(", ");
-  const action = dryRun ? "-WhatIf" : "-ErrorAction SilentlyContinue";
+  const action = dryRun ? "-WhatIf" : "-ErrorAction Continue";
   const lines = [
     "# System Care Script Builder",
     "# Review every command before running. Close browsers before clearing browser caches.",
@@ -487,10 +487,21 @@ function buildPowerShellScript() {
     "# Safety note: restore cleanup, hibernation, Reserved Storage, Windows.old, and ResetBase are advanced Windows options.",
     "",
     "$ErrorActionPreference = 'Continue'",
-    "$LogRoot = Join-Path $env:TEMP 'SystemCareScriptBuilder'",
-    "New-Item -ItemType Directory -Force -Path $LogRoot | Out-Null",
-    "$LogFile = Join-Path $LogRoot ('care-run-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.log')",
-    "Start-Transcript -Path $LogFile | Out-Null",
+    "$LogRoot = Join-Path $env:LOCALAPPDATA 'UtilityShelf\\SystemCareScriptBuilder\\Logs'",
+    "New-Item -ItemType Directory -Force -ErrorAction Stop -Path $LogRoot | Out-Null",
+    "$LogFile = Join-Path $LogRoot ('care-run-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '.log')",
+    "Start-Transcript -ErrorAction Stop -NoClobber -Path $LogFile | Out-Null",
+    "",
+    "$runErrors = [System.Collections.Generic.List[string]]::new()",
+    "function Invoke-CareStep([string]$Name, [scriptblock]$Action) {",
+    "  try {",
+    "    & $Action 2>&1 | ForEach-Object {",
+    "      if ($_ -is [System.Management.Automation.ErrorRecord]) {",
+    "        $runErrors.Add(\"${Name}: $($_.InvocationInfo.MyCommand) - $($_.Exception.Message)\")",
+    "      } else { $_ }",
+    "    }",
+    "  } catch { $runErrors.Add(\"${Name}: $($_.Exception.Message)\") }",
+    "}",
     "",
     "function Test-IsAdmin {",
     "  $identity = [Security.Principal.WindowsIdentity]::GetCurrent()",
@@ -501,7 +512,7 @@ function buildPowerShellScript() {
     "function Clear-FolderContents {",
     "  param([Parameter(Mandatory=$true)][string]$Path)",
     "  if (Test-Path -LiteralPath $Path -PathType Container) {",
-    `    Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force ${action}`,
+    `    Get-ChildItem -LiteralPath $Path -Force -ErrorAction Continue | Remove-Item -Recurse -Force ${action}`,
     "  }",
     "}",
     "",
@@ -522,7 +533,7 @@ function buildPowerShellScript() {
     lines.push(
       "",
       "if (Test-IsAdmin) {",
-      "  Checkpoint-Computer -Description 'Before System Care Script Builder cleanup' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction SilentlyContinue",
+      "  Invoke-CareStep 'Restore point' { Checkpoint-Computer -Description 'Before System Care Script Builder cleanup' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction Continue }",
       "} else {",
       "  Write-Warning 'Restore point skipped because this session is not elevated.'",
       "}"
@@ -538,16 +549,16 @@ function buildPowerShellScript() {
         ? "if (Test-IsAdmin) { Clear-FolderContents -Path 'C:\\Windows\\Temp' } else { Write-Warning 'Windows temp cleanup needs Administrator.' }"
         : "Write-Host 'Skipped Windows temp because admin tasks are disabled.'",
     ],
-    recycleBin: ["", "Write-Host 'Clearing recycle bin...'", `Clear-RecycleBin -Force ${dryRun ? "-WhatIf" : "-ErrorAction SilentlyContinue"}`],
+    recycleBin: ["", "Write-Host 'Clearing recycle bin...'", `Clear-RecycleBin -Force ${dryRun ? "-WhatIf" : "-ErrorAction Continue"}`],
     dnsCache: [
       "",
       "Write-Host 'Flushing DNS cache...'",
-      dryRun ? "Write-Host 'Would run: Clear-DnsClientCache'" : "Clear-DnsClientCache -ErrorAction SilentlyContinue",
+      dryRun ? "Write-Host 'Would run: Clear-DnsClientCache'" : "Clear-DnsClientCache -ErrorAction Continue",
     ],
     thumbnailCache: [
       "",
       "Write-Host 'Clearing File Explorer thumbnail cache...'",
-      `Get-ChildItem -Path "$env:LOCALAPPDATA\\Microsoft\\Windows\\Explorer" -Filter 'thumbcache_*.db' -Force -ErrorAction SilentlyContinue | Remove-Item -Force ${action}`,
+      `Get-ChildItem -Path "$env:LOCALAPPDATA\\Microsoft\\Windows\\Explorer" -Filter 'thumbcache_*.db' -Force -ErrorAction Continue | Remove-Item -Force ${action}`,
     ],
     deliveryOptimization: [
       "",
@@ -555,7 +566,7 @@ function buildPowerShellScript() {
       admin
         ? dryRun
           ? "Write-Host 'Would run as Administrator: Delete-DeliveryOptimizationCache -Force'"
-          : "if (Test-IsAdmin) { Delete-DeliveryOptimizationCache -Force -ErrorAction SilentlyContinue } else { Write-Warning 'Delivery Optimization cache cleanup needs Administrator.' }"
+          : "if (Test-IsAdmin) { Delete-DeliveryOptimizationCache -Force -ErrorAction Continue } else { Write-Warning 'Delivery Optimization cache cleanup needs Administrator.' }"
         : "Write-Host 'Skipped Delivery Optimization cache because admin tasks are disabled.'",
     ],
     browserCaches: [
@@ -566,7 +577,7 @@ function buildPowerShellScript() {
       "  \"$env:LOCALAPPDATA\\Google\\Chrome\\User Data\\Default\\Cache\"",
       ")",
       "$BrowserCachePaths | ForEach-Object { Clear-FolderContents -Path $_ }",
-      "Get-ChildItem -LiteralPath \"$env:LOCALAPPDATA\\Mozilla\\Firefox\\Profiles\" -Directory -ErrorAction SilentlyContinue | ForEach-Object { Clear-FolderContents -Path (Join-Path $_.FullName 'cache2') }",
+      "Get-ChildItem -LiteralPath \"$env:LOCALAPPDATA\\Mozilla\\Firefox\\Profiles\" -Directory -ErrorAction Continue | ForEach-Object { Clear-FolderContents -Path (Join-Path $_.FullName 'cache2') }",
     ],
     errorReports: [
       "",
@@ -595,7 +606,7 @@ function buildPowerShellScript() {
       "Write-Host 'Clearing old crash dumps...'",
       "Clear-FolderContents -Path \"$env:LOCALAPPDATA\\CrashDumps\"",
       admin
-        ? "if (Test-IsAdmin) { Get-ChildItem -Path 'C:\\Windows\\Minidump','C:\\Windows\\MEMORY.DMP' -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force " + action + " }"
+        ? "if (Test-IsAdmin) { Get-ChildItem -Path 'C:\\Windows\\Minidump','C:\\Windows\\MEMORY.DMP' -Force -ErrorAction Continue | Remove-Item -Recurse -Force " + action + " }"
         : "Write-Host 'System crash dump cleanup skipped because admin tasks are disabled.'",
     ],
     componentCleanup: [
@@ -604,17 +615,17 @@ function buildPowerShellScript() {
       admin
         ? dryRun
           ? "Write-Host 'Would run: DISM /Online /Cleanup-Image /StartComponentCleanup'"
-          : "DISM /Online /Cleanup-Image /StartComponentCleanup"
+          : "DISM /Online /Cleanup-Image /StartComponentCleanup; if ($LASTEXITCODE -ne 0) { throw ('DISM exit code {0}' -f $LASTEXITCODE) }"
         : "Write-Host 'Skipped component cleanup because admin tasks are disabled.'",
     ],
     eventLogs: [
       "",
       "Write-Host 'Exporting event log list before optional cleanup...'",
-      "wevtutil el | Out-File (Join-Path $LogRoot 'event-log-list.txt')",
+      "wevtutil el | Out-File (Join-Path $LogRoot 'event-log-list.txt'); if ($LASTEXITCODE -ne 0) { throw ('wevtutil exit code {0}' -f $LASTEXITCODE) }",
       admin
         ? dryRun
           ? "Write-Host 'Would remove old .log files from Windows temp/log folders.'"
-          : "Get-ChildItem -Path 'C:\\Windows\\Logs','C:\\Windows\\Temp' -Filter *.log -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } | Remove-Item -Force -ErrorAction SilentlyContinue"
+          : "Get-ChildItem -Path 'C:\\Windows\\Logs','C:\\Windows\\Temp' -Filter *.log -Recurse -Force -ErrorAction Continue | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } | Remove-Item -Force -ErrorAction Continue"
         : "Write-Host 'Skipped event log maintenance because admin tasks are disabled.'",
     ],
     restorePointPrune: [
@@ -632,7 +643,7 @@ function buildPowerShellScript() {
       admin
         ? dryRun
           ? "Write-Host 'Would run: powercfg /hibernate off'"
-          : "powercfg /hibernate off"
+          : "powercfg /hibernate off; if ($LASTEXITCODE -ne 0) { throw ('powercfg exit code {0}' -f $LASTEXITCODE) }"
         : "Write-Host 'Skipped hibernation change because admin tasks are disabled.'",
     ],
     reservedStorage: [
@@ -642,7 +653,7 @@ function buildPowerShellScript() {
       admin
         ? dryRun
         ? "Write-Host 'Would run: DISM /Online /Set-ReservedStorageState /State:Disabled'"
-        : "DISM /Online /Set-ReservedStorageState /State:Disabled"
+        : "DISM /Online /Set-ReservedStorageState /State:Disabled; if ($LASTEXITCODE -ne 0) { throw ('DISM exit code {0}' -f $LASTEXITCODE) }"
         : "Write-Host 'Skipped Reserved Storage change because admin tasks are disabled.'",
     ],
     windowsOld: [
@@ -662,18 +673,23 @@ function buildPowerShellScript() {
       admin
         ? dryRun
           ? "Write-Host 'Would run: DISM /Online /Cleanup-Image /StartComponentCleanup /ResetBase'"
-          : "DISM /Online /Cleanup-Image /StartComponentCleanup /ResetBase"
+          : "DISM /Online /Cleanup-Image /StartComponentCleanup /ResetBase; if ($LASTEXITCODE -ne 0) { throw ('DISM exit code {0}' -f $LASTEXITCODE) }"
         : "Write-Host 'Skipped component reset base because admin tasks are disabled.'",
     ],
   };
 
   tasks.forEach((task) => {
-    if (snippets[task]) lines.push(...snippets[task]);
+    const body = snippets[task];
+    if (body) lines.push("", `Invoke-CareStep '${taskLabels[task]}' {`, ...body.filter(Boolean).map(line => "  " + line), "}");
   });
   lines.push(
     "",
-    "Stop-Transcript | Out-Null",
-    "Write-Host \"Done. Log saved to $LogFile\"",
+    "if ($runErrors.Count) {",
+    "  Write-Warning ('Finished with {0} error(s).' -f $runErrors.Count)",
+    "  foreach ($problem in $runErrors) { Write-Warning $problem }",
+    "} else { Write-Host 'Finished with no reported errors.' }",
+    "Write-Host \"Log file: $LogFile\"",
+    "Stop-Transcript -ErrorAction Stop | Out-Null",
     "Write-Host ''",
     "Write-Host 'You can close this window after reading the result above.'",
     "Read-Host 'Press Enter to close'"
