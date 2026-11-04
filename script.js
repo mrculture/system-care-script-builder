@@ -549,7 +549,17 @@ function buildPowerShellScript() {
         ? "if (Test-IsAdmin) { Clear-FolderContents -Path 'C:\\Windows\\Temp' } else { Write-Warning 'Windows temp cleanup needs Administrator.' }"
         : "Write-Host 'Skipped Windows temp because admin tasks are disabled.'",
     ],
-    recycleBin: ["", "Write-Host 'Clearing recycle bin...'", `Clear-RecycleBin -Force ${dryRun ? "-WhatIf" : "-ErrorAction Continue"}`],
+    recycleBin: [
+      "",
+      "$recycledItems = (New-Object -ComObject Shell.Application -ErrorAction Stop).Namespace(10).Items()",
+      "if ($null -eq $recycledItems) { throw 'Could not read the Recycle Bin.' }",
+      "if ($recycledItems.Count -eq 0) {",
+      "  Write-Host 'Recycle Bin is empty. Nothing to clear.'",
+      "} else {",
+      "  Write-Host 'Clearing recycle bin...'",
+      `  Clear-RecycleBin -Force ${dryRun ? "-WhatIf" : "-ErrorAction Continue"}`,
+      "}",
+    ],
     dnsCache: [
       "",
       "Write-Host 'Flushing DNS cache...'",
