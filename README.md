@@ -35,7 +35,7 @@ npx playwright install chromium
 npm test
 ```
 
-Failed runs retain browser traces and an HTML report for seven days. Tests use synthetic data and block external browser requests, including analytics. CI files and dependencies stay under `.github/qa`, separate from public assets.
+Failed runs retain browser traces and an HTML report for seven days. Tests use synthetic data and block external browser requests, including analytics. CI files and dependencies stay under `.github/qa`. Cloudflare Pages redirects `/.github/*` requests to the homepage, so test files are not served to visitors. The test source remains available in this public GitHub repository.
 
 These checks report failures. Existing Cloudflare deployments still run independently. Making this a required merge/deployment gate is a separate configuration change.
 

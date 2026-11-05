@@ -1,0 +1,2 @@
+# Keep GitHub workflow and QA files out of visitor-facing URLs.
+/.github/* / 302
