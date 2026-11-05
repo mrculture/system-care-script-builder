@@ -2,6 +2,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {execFileSync}=require('node:child_process');
 const {ReleaseError,transaction,packageSite,command,wait,scrub}=require('./core.cjs');
+const {verifyAuth}=require('./auth.cjs');
 const config=require('./targets.json');
 const root=path.resolve(__dirname,'../..');
 const sha=process.env.GITHUB_SHA;
@@ -101,7 +102,9 @@ async function main() {
   const remote=execFileSync('git',['ls-remote','origin','refs/heads/main'],{cwd:root,encoding:'utf8'}).split(/\s/)[0];
   if(remote!==sha) {console.log('A newer main commit exists. Skipping this stale release.');return;}
   // Authentication check is required before any Wrangler upload.
-  await command([wrangler,'whoami'],{cwd:root,timeout:30000});
+  await verifyAuth(config.targets,
+    ()=>command([wrangler,'whoami'],{cwd:root,timeout:30000}),
+    name=>api(`/pages/projects/${name}`));
   for(const target of config.targets) {
     const {directory,count}=packageSite(root,target,sha,path.join(report,'assets'));
     console.log(`Releasing ${target.name}, ${count} public files, commit ${sha}`);

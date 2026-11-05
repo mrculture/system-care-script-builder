@@ -37,10 +37,10 @@ npm test
 
 Failed runs retain browser traces and an HTML report for seven days. Tests use synthetic data and block external browser requests, including analytics. CI files and dependencies stay under `.github/qa`. Cloudflare Pages redirects `/.github/*` requests to the homepage, so test files are not served to visitors. The test source remains available in this public GitHub repository.
 
-These checks report failures. Existing Cloudflare deployments still run independently. Making this a required merge/deployment gate is a separate configuration change.
+Production deployments now depend on these checks. Direct Cloudflare Git production builds are disabled for the targets in `.github/release/targets.json`; GitHub deploys the same tested main commit. Branch merge protection is separate.
 
 System Care checks cover all four Safe/Recycle Bin download combinations, unsupported presets, changed task consent, and batch preview payloads. PowerShell downloads are parsed for syntax, never executed. Local tests need Windows PowerShell or `pwsh`. These checks do not replace Marketplace App VM cleanup tests.
 
-## Guarded deployment preparation
+## Guarded deployments
 
-A disabled deployment job now follows the checks. Activation, credential requirements, retries and recovery limits are documented in [.github/release/README.md](.github/release/README.md). Existing direct Cloudflare Git deployments remain unchanged until the documented cutover.
+The deployment job follows successful checks, verifies the live release, retries known temporary failures at most twice, and restores the captured previous release if live verification fails and this run still owns production. Credentials, cutover settings and recovery limits are documented in [.github/release/README.md](.github/release/README.md).
