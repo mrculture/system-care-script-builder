@@ -1,0 +1,12 @@
+{
+  "targets": [
+    {
+      "name": "system-care-script-builder-git",
+      "kind": "pages",
+      "source": "",
+      "origin": "https://system-care-script-builder.utilityshelf.site",
+      "title": "System Care Script Builder",
+      "test": "safe"
+    }
+  ]
+}
