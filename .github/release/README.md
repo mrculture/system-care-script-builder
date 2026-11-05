@@ -89,3 +89,8 @@ branch merge protection or change deployment settings for other UtilityShelf
 projects. The tests simulate failure and recovery; production is not deliberately
 broken to test rollback.
 The Pages-only token cannot enumerate user accounts in Wrangler whoami. If that specific account-lookup error occurs, preflight verifies access to each exact configured Pages project instead. Other auth failures still stop; no additional token permissions are granted. See https://developers.cloudflare.com/pages/configuration/api/.
+
+CI pins GitHub's Ubuntu 24.04 runner and uses its preinstalled browser runtime
+libraries. Chromium installation is limited to five minutes. It does not reinstall
+Playwright's optional font packages through apt: that mirror stalled during
+activation. Missing runtime dependencies still fail browser checks before release.
